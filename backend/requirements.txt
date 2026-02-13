@@ -1,0 +1,15 @@
+fastapi[all]
+uvicorn
+sqlalchemy[asyncpg]
+alembic
+pydantic-settings
+python-multipart
+aiofiles
+celery
+redis
+psycopg2-binary
+minio
+claudia-api-client
+tailwindcss
+react-email
+clerk
