@@ -1,1 +1,2 @@
-from .contract_parser import contract_parser_agent
+from .contract_parser import parse_contract
+from .email_sender import send_email

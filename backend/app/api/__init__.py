@@ -1,50 +1,23 @@
-from fastapi import APIRouter, Depends
-from app.services.transaction_service import transaction_service
-from app.services.party_service import party_service
-from app.schemas.common import PaginationParams
-from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse, TransactionList
-from app.schemas.party import PartyCreate, PartyUpdate, PartyResponse
+from fastapi import APIRouter
+from .transactions import router as transactions_router
+from .parties import router as parties_router
+from .milestones import router as milestones_router
+from .amendments import router as amendments_router
+from .files import router as files_router
+from .inspections import router as inspections_router
+from .stats import router as stats_router
+from .today import router as today_router
+from .templates import router as templates_router
+from .action_items import router as action_items_router
 
-router = APIRouter()
-
-@router.post("/api/transactions", response_model=TransactionResponse)
-async def create_transaction(transaction: TransactionCreate):
-    return await transaction_service.create_transaction(transaction)
-
-@router.get("/api/transactions", response_model=TransactionList)
-async def list_transactions(pagination_params: PaginationParams):
-    return await transaction_service.list_transactions(pagination_params)
-
-@router.get("/api/transactions/{id}", response_model=TransactionResponse)
-async def get_transaction(id: UUID):
-    return await transaction_service.get_transaction(id)
-
-@router.patch("/api/transactions/{id}", response_model=TransactionResponse)
-async def update_transaction(id: UUID, transaction_update: TransactionUpdate):
-    return await transaction_service.update_transaction(id, transaction_update)
-
-@router.delete("/api/transactions/{id}")
-async def delete_transaction(id: UUID):
-    await transaction_service.soft_delete_transaction(id)
-
-@router.post("/api/transactions/{id}/parse")
-async def parse_contract(id: UUID):
-    await transaction_service.parse_contract(id)
-    return APIResponse(success=True, message="Contract parsing initiated")
-
-@router.post("/api/transactions/{id}/confirm")
-async def confirm_transaction(id: UUID):
-    await transaction_service.confirm_transaction(id)
-    return APIResponse(success=True, message="Transaction confirmed and activated")
-
-@router.post("/api/transactions/{id}/parties", response_model=PartyResponse)
-async def create_party(id: UUID, party_create: PartyCreate):
-    return await party_service.create_party(id, party_create)
-
-@router.patch("/api/transactions/{id}/parties/{party_id}", response_model=PartyResponse)
-async def update_party(id: UUID, party_id: UUID, party_update: PartyUpdate):
-    return await party_service.update_party(id, party_id, party_update)
-
-@router.delete("/api/transactions/{id}/parties/{party_id}")
-async def delete_party(id: UUID, party_id: UUID):
-    await party_service.delete_party(id, party_id)
+router = APIRouter(prefix="/api")
+router.include_router(transactions_router, tags=["transactions"])
+router.include_router(parties_router, tags=["parties"])
+router.include_router(milestones_router, tags=["milestones"])
+router.include_router(amendments_router, tags=["amendments"])
+router.include_router(files_router, tags=["files"])
+router.include_router(inspections_router, tags=["inspections"])
+router.include_router(stats_router, tags=["stats"])
+router.include_router(today_router, tags=["today"])
+router.include_router(templates_router, tags=["templates"])
+router.include_router(action_items_router, tags=["action-items"])

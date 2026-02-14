@@ -1,6 +1,7 @@
 fastapi[all]
-uvicorn
-sqlalchemy[asyncpg]
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
 alembic
 pydantic-settings
 python-multipart
@@ -9,7 +10,5 @@ celery
 redis
 psycopg2-binary
 minio
-claudia-api-client
-tailwindcss
-react-email
-clerk
+anthropic
+pymupdf

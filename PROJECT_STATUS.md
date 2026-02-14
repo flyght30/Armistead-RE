@@ -1,101 +1,155 @@
-# Transaction-to-Close: Project Memory
+# Armistead RE: Project Status
 
-**Last Updated:** 2026-02-12  
-**Current Phase:** Pre-Development (Documentation Complete)
-
----
-
-## Project Status
-
-| Item | Status |
-|------|--------|
-| PRD | ✅ Complete (v2.0) |
-| Phase 1 Spec | ✅ Complete |
-| Phase 2 Spec | ✅ Complete |
-| Phase 3 Spec | ✅ Complete |
-| Phase 4 Spec | ✅ Complete |
-| Phase 5 Spec | ✅ Complete |
-| Chain-of-Verification (all phases) | ✅ Complete |
-| Test Plans (all phases) | ✅ Complete |
-| Changelog | ✅ Complete |
-| Development | ⬜ Not Started |
+**Last Updated:** 2026-02-13
+**Current Phase:** Phase 1 — Today View (Development Complete, Integration Testing)
 
 ---
 
-## Key Decisions Made
+## Product Evolution
 
-1. **Tech Stack:** React + TypeScript + Tailwind (frontend), Python + FastAPI (backend), PostgreSQL + Redis + S3 (data), Claude API (AI), SendGrid (email)
-2. **Representation Sides:** buyer, seller, dual (added dual after CoV #00)
-3. **Email Strategy:** SendGrid primary with agent's email as Reply-To; Gmail/Outlook direct send is future enhancement
-4. **Agent Approval Required:** No fully autonomous emails in V1. Agent always previews and approves.
-5. **Cash Transactions:** Conditional workflows — no lender emails, no appraisal/financing milestones
-6. **Inspection Costs:** Framed as "estimated ranges" with disclaimers, not professional quotes
-7. **Launch State:** Alabama first, then expand to GA, FL, MS, LA, TX
-8. **Timeline:** 20 weeks across 5 phases
-9. **Inspection Safety:** Mandatory safety category review even when no issues found
-
----
-
-## Chain-of-Verification Summary
-
-| CoV | Phase | Key Findings | Resolution |
-|-----|-------|-------------|------------|
-| #00 | Scope | Dual agency missing; cash transactions not handled; multi-party naming; non-standard contracts; mid-transaction changes | Added dual representation; conditional workflows; multi-party support; contract type detection; amendment tracking |
-| #01 | Phase 1 | Scanned PDFs; partial execution; API failures; rate limits; multi-file contracts | Vision fallback; execution detection; retry logic; 429 handling; single-file for V1 |
-| #02 | Phase 2 | Missing emails; double-send; SendGrid down; legal compliance; reply handling | Email validation; idempotency keys; queued retry; mandatory preview; Reply-To config |
-| #03 | Phase 3 | Celery reliability; timezones; out-of-order milestones; reminder fatigue; duplicate completion | Redis AOF; UTC storage; state-based logic; configurable reminders; idempotent completion |
-| #04 | Phase 4 | Cost accuracy; unusual formats; missed safety items; liability; poor OCR | Disclaimer framing; format detection; safety checklist; agent-in-loop; vision fallback |
-| #05 | Phase 5 | Generic emails; rollback plan; feature requests; unknown formats; scale | Tone preferences; blue-green deploy; feedback triage; log + iterate; pagination |
+| Milestone | Date | Status |
+|-----------|------|--------|
+| Original PRD (TTC v2.0) | 2026-02-12 | ✅ Complete |
+| Codebase audit + 33 fixes | 2026-02-13 | ✅ Complete |
+| Docker deployment | 2026-02-13 | ✅ Complete |
+| UI expansion (14 components, 7 tabs, dashboard) | 2026-02-13 | ✅ Complete |
+| CRUD wiring (parties, milestones, docs, edit mode) | 2026-02-13 | ✅ Complete |
+| Field mismatch fixes (all schemas aligned) | 2026-02-13 | ✅ Complete |
+| **Product reimagination (PRD v3.0)** | 2026-02-13 | ✅ Complete |
+| **7-phase roadmap** | 2026-02-13 | ✅ Complete |
+| **Phase specifications (all 7)** | 2026-02-13 | ✅ Complete |
+| **Phase 1 development** | 2026-02-13 | ✅ Complete |
+| Phase 1 integration testing | — | ⬜ In progress |
 
 ---
 
-## Open Questions (For Development Start)
+## Phase Status
 
-1. **Hosting provider decision** — AWS vs. GCP vs. DigitalOcean? (Recommendation: AWS for S3 + RDS + ECS ecosystem)
-2. **Clerk vs. Auth0** — Final auth provider selection
-3. **Domain name** — What domain for the platform and email sending?
-4. **SendGrid plan** — Free tier (100/day) sufficient for beta, need paid ($20+/mo) for launch
-5. **Beta agent recruitment** — Who are the 3-5 agents for beta testing?
-6. **Alabama contract samples** — Need 5+ real (redacted) contracts for parser testing
-7. **Inspection report samples** — Need 3+ real inspection reports for analyzer testing
+| Phase | Name | Status | Specification |
+|-------|------|--------|---------------|
+| **1** | Today View | ✅ Dev Complete | `phases/PHASE_1_TODAY_VIEW.md` |
+| **2** | Nudge Engine | 📋 Spec Complete | `phases/PHASE_2_NUDGE_ENGINE.md` |
+| **3** | Party Portal | 📋 Spec Complete | `phases/PHASE_3_PARTY_PORTAL.md` |
+| **4** | AI Advisor | 📋 Spec Complete | `phases/PHASE_4_AI_ADVISOR.md` |
+| **5** | Money | 📋 Spec Complete | `phases/PHASE_5_MONEY.md` |
+| **6** | Doc Generation | 📋 Spec Complete | `phases/PHASE_6_DOCS_GENERATION.md` |
+| **7** | Brokerage | 📋 Spec Complete | `phases/PHASE_7_BROKERAGE.md` |
 
 ---
 
-## Document Inventory
+## What's Built (Pre-Phase 1)
+
+### Backend (FastAPI + PostgreSQL + MinIO)
+- ✅ 12 database models (+milestone_templates, milestone_template_items, action_items)
+- ✅ Full CRUD endpoints for transactions, parties, milestones, files, amendments, inspections
+- ✅ AI contract parser (Claude Sonnet 4 with vision fallback)
+- ✅ MinIO file storage with presigned URLs
+- ✅ Dashboard stats endpoint
+- ✅ Transaction confirm + parse endpoints
+- ✅ Seeded with 5 realistic transactions, parties, milestones, inspections
+- ✅ **Phase 1:** Today View API (`GET /api/today`) with auto-generated action items
+- ✅ **Phase 1:** Milestone Templates API (CRUD + apply template to transaction)
+- ✅ **Phase 1:** Health Score API (`GET /api/transactions/{id}/health`) with breakdown
+- ✅ **Phase 1:** Action Items API (CRUD with milestone completion cascade)
+- ✅ **Phase 1:** 7 milestone templates seeded (GA + AL, conventional/FHA/VA/cash, buyer/seller)
+- ✅ **Phase 1:** Transaction model expanded (contract_execution_date, health_score, template_id)
+
+### Frontend (React + TypeScript + Tailwind)
+- ✅ 14 UI components (Card, Modal, Tabs, Timeline, DataTable, StatusBadge, StatsCard, FormInput, FormSelect, FormTextarea, Spinner, EmptyState, PageHeader, ToastContext)
+- ✅ Dashboard with stats cards, filterable data table, search
+- ✅ Transaction detail with 7 tabs (Overview, Timeline, Parties, Documents, Inspections, History, Communications)
+- ✅ Full CRUD on Parties (add/edit/delete with modal)
+- ✅ Full CRUD on Milestones (add/edit/delete/mark complete)
+- ✅ File upload + download
+- ✅ Transaction edit mode on Overview tab
+- ✅ Contract parse + confirm buttons
+- ✅ AI confidence score display
+- ✅ Collapsible mobile sidebar
+- ✅ Toast notification system
+- ✅ New Transaction page (upload contract OR manual entry)
+- ✅ Settings page (stub)
+- ✅ Parties page (global list)
+- ✅ **Phase 1:** Today View page (`/`) — prioritized daily action items with 4 urgency sections
+- ✅ **Phase 1:** Pipeline Sidebar — transaction list with health dots, closing dates
+- ✅ **Phase 1:** Health Badge + Health Dot components (red/yellow/green scoring)
+- ✅ **Phase 1:** Action Item Cards with priority styling, quick complete/dismiss
+- ✅ **Phase 1:** Template Picker modal — auto-filters by state/financing/side
+- ✅ **Phase 1:** Health Badge integrated into Transaction Detail header
+- ✅ **Phase 1:** Template Picker integrated into New Transaction flow
+- ✅ **Phase 1:** Routes updated (Today View at `/`, Dashboard moved to `/pipeline`)
+
+### Infrastructure
+- ✅ Docker Compose: 5 services (backend, frontend, db, redis, minio)
+- ✅ Frontend: Port 3001 (Nginx → Vite build)
+- ✅ Backend: Port 8000 (FastAPI + Uvicorn)
+- ✅ Database: PostgreSQL 16
+- ✅ Cache: Redis 7
+- ✅ Storage: MinIO (S3-compatible)
+- ✅ Build: 0 TypeScript errors, 1760 modules
+
+---
+
+## Key Documents
 
 ```
-ttc-docs/
-├── PRD.md                                    — Product Requirements Document (v2.0)
+Armistead-RE/
+├── PRD.md                                    — Product Requirements (v3.0, reimagined)
+├── ROADMAP.md                                — 7-phase implementation roadmap
+├── PROJECT_STATUS.md                         — This file
 ├── CHANGELOG.md                              — Version history
 ├── phases/
-│   ├── PHASE_1_Foundation_Contract_Parsing.md — Weeks 1-4
-│   ├── PHASE_2_Communications_Engine.md       — Weeks 5-8
-│   ├── PHASE_3_Milestone_Tracking.md          — Weeks 9-12
-│   ├── PHASE_4_Inspection_Analysis.md         — Weeks 13-16
-│   └── PHASE_5_Polish_Launch.md               — Weeks 17-20
-├── testing/
-│   └── MASTER_TEST_PLAN.md                    — Comprehensive testing strategy
-├── memory/
-│   ├── COV_00_project_scope.md                — Scope verification
-│   └── PROJECT_STATUS.md                      — This file
-└── changelogs/
-    └── (per-phase changelogs created during development)
+│   ├── PHASE_1_TODAY_VIEW.md                 — Today View + Templates + Health Score
+│   ├── PHASE_2_NUDGE_ENGINE.md               — Automated reminders + email delivery
+│   ├── PHASE_3_PARTY_PORTAL.md               — Multi-party transparency portal
+│   ├── PHASE_4_AI_ADVISOR.md                 — AI transaction advisor
+│   ├── PHASE_5_MONEY.md                      — Commission tracking + pipeline
+│   ├── PHASE_6_DOCS_GENERATION.md            — Document generation + templates
+│   └── PHASE_7_BROKERAGE.md                  — Multi-agent brokerage platform
+├── backend/                                  — FastAPI backend
+├── frontend/                                 — React + TypeScript frontend
+└── docker-compose.yml                        — Full stack orchestration
 ```
 
 ---
 
-## Metrics Targets (Consolidated)
+## Key Decisions
 
-| Metric | Target |
-|--------|--------|
-| Contract parse time | < 30 seconds |
-| Email generation time | < 15 seconds |
-| Inspection analysis time | < 60 seconds |
-| AI extraction accuracy | ≥ 90% |
-| Safety item detection | ≥ 95% |
-| Email delivery rate | ≥ 98% |
-| Email open rate | > 80% |
-| Page load times | < 2 seconds |
-| System uptime | ≥ 99.5% |
-| Agent time saved per transaction | 6+ hours |
-| Agent satisfaction | ≥ 4.5 / 5.0 |
+1. **Product shift:** From passive data storage → proactive deal protection
+2. **Today View replaces Dashboard** as the home page — agents need "what to do now" not stats
+3. **Milestone templates** are core IP — state/financing/side-specific workflows
+4. **Party portal** with no-account-required links — zero friction adoption
+5. **AI evolves from parser → advisor** — daily risk monitoring, not one-time extraction
+6. **Commission tracking** drives daily usage — agents think in dollars
+7. **Brokerage tier** is the revenue multiplier — $500-2000/mo vs $39/mo per agent
+8. **Resend** for email delivery (modern API, good DX, webhook support)
+9. **Celery + Redis** for background jobs (reminders, AI analysis, email queue)
+10. **Chain of Verification** applied to every phase specification
+11. **Regression testing** required before each phase ships
+
+---
+
+## Phase 1 Build Verification
+
+| Check | Result |
+|-------|--------|
+| Backend builds | ✅ No import errors, starts cleanly |
+| Frontend builds | ✅ 0 TypeScript errors, `tsc && vite build` passes |
+| DB tables created | ✅ milestone_templates, milestone_template_items, action_items |
+| DB columns added | ✅ transactions.{contract_execution_date, health_score, template_id}, milestones.{template_item_id, is_auto_generated} |
+| Seed: 7 templates | ✅ 112 milestone items total |
+| API: `GET /api/today` | ✅ Returns grouped action items |
+| API: `GET /api/templates/milestones` | ✅ Returns 7 templates with item counts |
+| API: `GET /api/templates/milestones?state_code=AL` | ✅ Filters correctly (2 results) |
+| API: `GET /api/transactions/{id}/health` | ✅ Returns score + breakdown |
+| Docker: all 5 services | ✅ Running (backend, frontend, db, redis, minio) |
+
+---
+
+## Next Steps
+
+1. **Phase 1 integration testing** — verify Today View renders action items end-to-end
+2. **Phase 1 regression testing** — ensure existing CRUD (parties, milestones, docs) still works
+3. **Begin Phase 2** — Nudge Engine (Celery + Redis + Resend email delivery)
+4. Celery worker + beat scheduler setup
+5. Email template system + Resend integration
+6. Escalation chains (party → agent → broker)

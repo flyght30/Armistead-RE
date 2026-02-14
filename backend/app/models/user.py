@@ -1,11 +1,12 @@
-from sqlalchemy import Column, UUID, String, JSON
-from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy import Column, String
+from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.orm import relationship
 from .base_model import BaseModel
+
 
 class User(BaseModel):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     clerk_id = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
@@ -16,5 +17,7 @@ class User(BaseModel):
     email_signature = Column(JSON, nullable=True)
     settings = Column(JSON, nullable=True)
 
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
+    # Relationships
+    transactions = relationship("Transaction", back_populates="agent", foreign_keys="Transaction.agent_id")
+    amendments = relationship("Amendment", back_populates="changed_by")
+    email_templates = relationship("EmailTemplate", back_populates="agent")

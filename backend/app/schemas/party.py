@@ -1,21 +1,37 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from typing import Any, Dict, Optional
 from uuid import UUID
 from datetime import datetime
-from .common import PaginationParams
+
 
 class PartyBase(BaseModel):
     name: str
     role: str
-    contact_info: Optional[str] = None
+    email: str
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    is_primary: bool = False
+
 
 class PartyCreate(PartyBase):
-    transaction_id: UUID
-
-class PartyUpdate(PartyBase):
     pass
 
+
+class PartyUpdate(BaseModel):
+    """All fields optional for partial updates."""
+    name: Optional[str] = None
+    role: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    is_primary: Optional[bool] = None
+
+
 class PartyResponse(PartyBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
+    transaction_id: UUID
+    notes: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime

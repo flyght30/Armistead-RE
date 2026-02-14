@@ -1,44 +1,61 @@
-from typing import Optional
+import logging
 import uuid
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.config import settings
-from app.database import get_async_session
 from app.models.transaction import Transaction
+from app.models.party import Party
 from app.schemas.contract_parsing import ParseResponse
 from app.services.storage_service import upload_file
 from app.agents.contract_parser import parse_contract
 
-async def parse_and_save_transaction(file: UploadFile, db: AsyncSession = Depends(get_async_session)) -> dict:
+logger = logging.getLogger(__name__)
+
+
+async def parse_and_save_transaction(
+    file: UploadFile,
+    agent_id: uuid.UUID,
+    db: AsyncSession,
+) -> dict:
+    """Upload a contract file, parse it via AI, and create a transaction with parties."""
     file_id = await upload_file(file, db)
-    
+
     parsed_data = await parse_contract(file.filename)
-    
+
     new_transaction = Transaction(
-        id=uuid.uuid4(),
-        title=file.filename,
-        status="pending",
-        file_path=file.filename,
-        created_by_id=settings.admin_user_id  # Assuming admin user ID is set in settings
+        agent_id=agent_id,
+        status="pending_review",
+        representation_side="buyer",  # Will be updated from parsed data
+        property_address=parsed_data.get("property_details", {}).get("address"),
+        property_city=parsed_data.get("property_details", {}).get("city"),
+        property_state=parsed_data.get("property_details", {}).get("state"),
+        property_zip=parsed_data.get("property_details", {}).get("zip_code"),
+        purchase_price=parsed_data.get("financial_terms", {}).get("purchase_price"),
+        financing_type=parsed_data.get("financial_terms", {}).get("financing_type"),
+        contract_document_url=file.filename,
+        ai_extraction_confidence=parsed_data.get("confidence_scores"),
     )
     db.add(new_transaction)
     await db.commit()
     await db.refresh(new_transaction)
 
-    for party_data in parsed_data.data.parties:
+    # Create parties from parsed data
+    for party_data in parsed_data.get("parties", []):
+        contact = party_data.get("contact_info", {})
         new_party = Party(
-            id=uuid.uuid4(),
-            name=party_data.name,
-            role=party_data.role,
-            contact_info=party_data.contact_info,
-            transaction_id=new_transaction.id
+            name=party_data.get("name", "Unknown"),
+            role=party_data.get("role", "unknown"),
+            email=contact.get("email", ""),
+            phone=contact.get("phone"),
+            company=contact.get("company"),
+            transaction_id=new_transaction.id,
         )
         db.add(new_party)
-        await db.commit()
-        await db.refresh(new_party)
+
+    await db.commit()
 
     return {
-        "status": parsed_data.status,
-        "data": new_transaction.dict(),
-        "confidence_scores": parsed_data.confidence_scores,
-        "detected_features": parsed_data.detected_features
+        "status": "success",
+        "transaction_id": str(new_transaction.id),
+        "confidence_scores": parsed_data.get("confidence_scores", {}),
+        "detected_features": parsed_data.get("detected_features", []),
     }
