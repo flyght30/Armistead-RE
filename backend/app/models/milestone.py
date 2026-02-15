@@ -19,6 +19,11 @@ class Milestone(BaseModel):
     last_reminder_sent_at = Column(TIMESTAMP(timezone=True), nullable=True)
     sort_order = Column(Integer, nullable=False)
 
+    # Phase 2: Nudge engine fields
+    reminder_sent_count = Column(Integer, nullable=False, default=0)
+    escalation_level = Column(Integer, nullable=False, default=0)
+    reminders_paused_until = Column(TIMESTAMP(timezone=True), nullable=True)
+
     # Phase 1: New fields
     template_item_id = Column(UUID(as_uuid=True), ForeignKey("milestone_template_items.id", ondelete="SET NULL"), nullable=True)
     is_auto_generated = Column(Boolean, default=False)

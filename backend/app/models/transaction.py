@@ -27,6 +27,9 @@ class Transaction(BaseModel):
     health_score = Column(Float, nullable=True)
     template_id = Column(UUID(as_uuid=True), ForeignKey("milestone_templates.id", ondelete="SET NULL"), nullable=True)
 
+    # Phase 2: Notification overrides
+    notification_overrides = Column(JSON, nullable=True)  # per-transaction notification settings
+
     # Relationships
     agent = relationship("User", back_populates="transactions", foreign_keys=[agent_id])
     parties = relationship("Party", back_populates="transaction", cascade="all, delete-orphan")
@@ -37,3 +40,8 @@ class Transaction(BaseModel):
     files = relationship("File", back_populates="transaction")
     action_items = relationship("ActionItem", back_populates="transaction", cascade="all, delete-orphan")
     template = relationship("MilestoneTemplate", back_populates="transactions", foreign_keys=[template_id])
+    commissions = relationship("TransactionCommission", back_populates="transaction", cascade="all, delete-orphan")
+    risk_alerts = relationship("RiskAlert", back_populates="transaction", cascade="all, delete-orphan")
+    ai_messages = relationship("AIAdvisorMessage", back_populates="transaction", cascade="all, delete-orphan")
+    email_drafts = relationship("EmailDraft", back_populates="transaction", cascade="all, delete-orphan")
+    notification_logs = relationship("NotificationLog", back_populates="transaction", cascade="all, delete-orphan")

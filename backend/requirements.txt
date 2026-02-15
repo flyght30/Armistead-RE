@@ -6,9 +6,15 @@ alembic
 pydantic-settings
 python-multipart
 aiofiles
-celery
+celery[redis]
 redis
 psycopg2-binary
 minio
 anthropic
 pymupdf
+resend
+jinja2
+pytz
+python-magic
+weasyprint
+httpx

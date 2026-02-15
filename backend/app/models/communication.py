@@ -22,6 +22,11 @@ class Communication(BaseModel):
     clicked_at = Column(TIMESTAMP(timezone=True), nullable=True)
     template_used = Column(String, nullable=True)
 
+    # Phase 2: Delivery tracking
+    delivery_status = Column(String(30), nullable=True)  # delivered, bounced, complained
+    bounce_reason = Column(String, nullable=True)
+    notification_log_id = Column(UUID(as_uuid=True), nullable=True)
+
     # Relationships
     transaction = relationship("Transaction", back_populates="communications")
     milestone = relationship("Milestone", back_populates="communications")

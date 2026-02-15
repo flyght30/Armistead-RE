@@ -7,15 +7,47 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:pass@db/ttc
-      - REDIS_URL=redis://redis
+      - REDIS_URL=redis://redis:6379/0
       - MINIO_ENDPOINT=minio
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
-      - CLAUDE_API_KEY=your_claude_api_key
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-your_claude_api_key}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - RESEND_WEBHOOK_SECRET=${RESEND_WEBHOOK_SECRET:-}
+      - PORTAL_BASE_URL=http://localhost:3000
     depends_on:
       - db
       - redis
       - minio
+    restart: unless-stopped
+
+  celery-worker:
+    build: ./backend
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:pass@db/ttc
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-your_claude_api_key}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - RESEND_WEBHOOK_SECRET=${RESEND_WEBHOOK_SECRET:-}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  celery-beat:
+    build: ./backend
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:pass@db/ttc
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -23,7 +55,7 @@ services:
       - "3001:3000"
     environment:
       - VITE_API_URL=http://backend:8000
-      - VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-your_clerk_publishable_key}
     depends_on:
       - backend
 
@@ -35,21 +67,28 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
       - POSTGRES_DB=ttc
+    restart: unless-stopped
 
   redis:
     image: redis:7
     volumes:
       - redis_data:/data
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
     ports:
       - "9002:9000"
+      - "9001:9001"
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
 
 volumes:
   db_data:
   redis_data:
+  minio_data:
