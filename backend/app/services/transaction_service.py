@@ -142,6 +142,37 @@ async def confirm_transaction(id: UUID, db: AsyncSession):
     await db.commit()
     await db.refresh(transaction, ["agent"])
 
+    # Auto-apply milestone template based on property state
+    try:
+        if transaction.property_state:
+            from app.services.template_service import apply_template, list_templates
+            from app.schemas.milestone_template import ApplyTemplateRequest
+            from app.services.health_score_service import compute_health_score
+            from datetime import datetime, timezone
+
+            templates = await list_templates(
+                db,
+                state_code=transaction.property_state,
+                financing_type=transaction.financing_type,
+            )
+            if templates:
+                selected = templates[0]
+                for t in templates:
+                    if t.is_default:
+                        selected = t
+                        break
+                apply_request = ApplyTemplateRequest(
+                    template_id=selected.id,
+                    contract_execution_date=transaction.contract_execution_date or datetime.now(timezone.utc),
+                    closing_date=transaction.closing_date,
+                )
+                await apply_template(id, apply_request, db)
+
+            # Compute health score after milestones are created
+            await compute_health_score(id, db)
+    except Exception:
+        logger.exception("Failed to auto-apply milestones for transaction %s", id)
+
     # Send confirmation email
     try:
         await email_sender_agent(

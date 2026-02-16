@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
+from app.auth import get_current_agent_id
 from app.schemas.document import (
     DocumentTemplateResponse, GenerateDocumentRequest,
     GeneratedDocumentResponse, DocumentPreviewResponse,
@@ -11,14 +12,12 @@ from app.services import document_service
 
 router = APIRouter()
 
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
-
 
 @router.get("/document-templates", response_model=List[DocumentTemplateResponse])
 async def list_document_templates(
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await document_service.list_templates(db, agent_id=agent_id)
 
 
@@ -27,8 +26,8 @@ async def generate_document(
     transaction_id: UUID,
     request: GenerateDocumentRequest,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await document_service.generate_document(transaction_id, request, db, agent_id=agent_id)
 
 

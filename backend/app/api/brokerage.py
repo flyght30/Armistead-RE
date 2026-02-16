@@ -14,8 +14,6 @@ from app.services import brokerage_service
 
 router = APIRouter()
 
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
-
 
 # --- Brokerage ---
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -10,6 +10,9 @@ import {
   ClipboardCheck,
   History,
   MessageSquare,
+  Bot,
+  Globe,
+  FileBarChart,
 } from 'lucide-react';
 import apiClient from '../../lib/api';
 import { TransactionDetail as TransactionDetailType, HealthScoreData } from '../../types/transaction';
@@ -106,6 +109,31 @@ export default function TransactionDetailPage() {
         }
       />
 
+      {/* Quick Action Buttons */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Link
+          to={`/transaction/${id}/advisor`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+        >
+          <Bot className="w-4 h-4" />
+          AI Advisor
+        </Link>
+        <Link
+          to={`/transaction/${id}/portal`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+        >
+          <Globe className="w-4 h-4" />
+          Client Portal
+        </Link>
+        <Link
+          to={`/transaction/${id}/documents`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+        >
+          <FileBarChart className="w-4 h-4" />
+          Generate Docs
+        </Link>
+      </div>
+
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab}>
         {(tab) => {
           switch (tab) {
@@ -122,7 +150,7 @@ export default function TransactionDetailPage() {
             case 'history':
               return <HistoryTab amendments={data.amendments} />;
             case 'communications':
-              return <CommunicationsTab communications={data.communications} />;
+              return <CommunicationsTab communications={data.communications} transactionId={id!} onRefresh={refetch} />;
             default:
               return null;
           }

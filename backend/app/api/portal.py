@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
+from app.auth import get_current_agent_id
 from app.schemas.portal import (
     PortalAccessCreate, PortalAccessResponse,
     PortalUploadResponse, PortalUploadReview, PortalTransactionView,
@@ -10,8 +11,6 @@ from app.schemas.portal import (
 from app.services import portal_service
 
 router = APIRouter()
-
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
 
 
 # --- Agent-facing portal management ---
@@ -68,6 +67,6 @@ async def review_portal_upload(
     upload_id: UUID,
     review: PortalUploadReview,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    reviewer_id = UUID(DEV_AGENT_ID)
-    return await portal_service.review_upload(upload_id, review, db, reviewer_id=reviewer_id)
+    return await portal_service.review_upload(upload_id, review, db, reviewer_id=agent_id)

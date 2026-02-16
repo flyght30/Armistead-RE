@@ -72,3 +72,38 @@ async def delete_draft(draft_id: UUID, db: AsyncSession) -> None:
         raise HTTPException(status_code=404, detail="Email draft not found")
     await db.delete(draft)
     await db.commit()
+
+
+async def send_draft(draft_id: UUID, db: AsyncSession) -> EmailDraftResponse:
+    """Send an email draft via the delivery service and mark it as sent."""
+    from app.services import email_delivery_service
+
+    draft = await db.get(EmailDraft, draft_id)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Email draft not found")
+    if draft.status == "sent":
+        raise HTTPException(status_code=400, detail="Draft already sent")
+    if not draft.recipient_email:
+        raise HTTPException(status_code=422, detail="Draft is missing recipient_email")
+    if not draft.subject:
+        raise HTTPException(status_code=422, detail="Draft is missing subject")
+    if not draft.body_html:
+        raise HTTPException(status_code=422, detail="Draft is missing body_html")
+
+    result = await email_delivery_service.send_email(
+        to_email=draft.recipient_email,
+        subject=draft.subject,
+        html_body=draft.body_html,
+    )
+
+    if result.get("status") == "failed":
+        raise HTTPException(
+            status_code=502,
+            detail=f"Email delivery failed: {result.get('error', 'Unknown error')}",
+        )
+
+    draft.status = "sent"
+    draft.sent_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(draft)
+    return EmailDraftResponse.model_validate(draft)

@@ -19,7 +19,18 @@ async def parse_and_save_transaction(
     """Upload a contract file, parse it via AI, and create a transaction with parties."""
     file_id = await upload_file(file, db)
 
-    parsed_data = await parse_contract(file.filename)
+    # Read file content and write to a temp file for PDF parsing
+    import tempfile, os
+    await file.seek(0)
+    contents = await file.read()
+    suffix = "." + (file.filename.split(".")[-1] if file.filename else "pdf")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+    try:
+        parsed_data = await parse_contract(tmp_path)
+    finally:
+        os.unlink(tmp_path)
 
     new_transaction = Transaction(
         agent_id=agent_id,

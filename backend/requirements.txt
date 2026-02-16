@@ -18,3 +18,9 @@ pytz
 python-magic
 weasyprint
 httpx
+pyjwt[crypto]
+# Test dependencies
+pytest
+pytest-asyncio
+aiosqlite
+httpx

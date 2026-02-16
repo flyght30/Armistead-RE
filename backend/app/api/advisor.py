@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
+from app.auth import get_current_agent_id
 from app.schemas.ai_advisor import (
     AdvisorChatRequest, AdvisorChatResponse, AdvisorConversation,
     RiskAlertResponse, RiskAlertUpdate,
@@ -12,16 +13,14 @@ from app.services import ai_advisor_service
 
 router = APIRouter()
 
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
-
 
 @router.post("/transactions/{transaction_id}/advisor/chat", response_model=AdvisorChatResponse)
 async def advisor_chat(
     transaction_id: UUID,
     request: AdvisorChatRequest,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await ai_advisor_service.chat(transaction_id, agent_id, request, db)
 
 

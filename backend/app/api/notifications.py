@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
+from app.auth import get_current_agent_id
 from app.schemas.notification import (
     NotificationRuleCreate, NotificationRuleUpdate, NotificationRuleResponse,
     NotificationLogResponse, NotificationSettingsUpdate,
@@ -11,14 +12,12 @@ from app.services import notification_service
 
 router = APIRouter()
 
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
-
 
 @router.get("/notification-rules", response_model=List[NotificationRuleResponse])
 async def list_notification_rules(
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await notification_service.list_rules(agent_id, db)
 
 
@@ -26,8 +25,8 @@ async def list_notification_rules(
 async def create_notification_rule(
     rule_create: NotificationRuleCreate,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await notification_service.create_rule(agent_id, rule_create, db)
 
 
@@ -62,6 +61,6 @@ async def list_notification_logs(
 async def update_notification_settings(
     settings: NotificationSettingsUpdate,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await notification_service.update_notification_settings(agent_id, settings, db)

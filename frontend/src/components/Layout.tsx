@@ -11,6 +11,7 @@ import {
   Building2,
   Menu,
   X,
+  DollarSign,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/', label: 'Today', icon: CalendarCheck },
   { to: '/pipeline', label: 'Pipeline', icon: LayoutDashboard },
   { to: '/new', label: 'New Transaction', icon: Plus },
+  { to: '/commissions', label: 'Commissions', icon: DollarSign },
   { to: '/parties', label: 'Parties', icon: Users },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

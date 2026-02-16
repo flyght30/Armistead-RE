@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
+from app.auth import get_current_agent_id
 from app.schemas.commission import (
     CommissionConfigCreate, CommissionConfigUpdate, CommissionConfigResponse,
     TransactionCommissionCreate, TransactionCommissionUpdate, TransactionCommissionResponse,
@@ -13,16 +14,14 @@ from app.services import commission_service
 
 router = APIRouter()
 
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
-
 
 # --- Commission Config ---
 
 @router.get("/commission-config", response_model=CommissionConfigResponse)
 async def get_commission_config(
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     config = await commission_service.get_config(agent_id, db)
     if not config:
         return CommissionConfigResponse(
@@ -39,8 +38,8 @@ async def get_commission_config(
 async def upsert_commission_config(
     config_data: CommissionConfigCreate,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await commission_service.upsert_config(agent_id, config_data, db)
 
 
@@ -63,8 +62,8 @@ async def create_transaction_commission(
     transaction_id: UUID,
     commission_data: TransactionCommissionCreate,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await commission_service.create_transaction_commission(
         transaction_id, agent_id, commission_data, db
     )
@@ -86,8 +85,8 @@ async def update_transaction_commission(
 @router.get("/pipeline", response_model=PipelineSummary)
 async def get_pipeline(
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     return await commission_service.get_pipeline_summary(agent_id, db)
 
 
@@ -95,8 +94,8 @@ async def get_pipeline(
 async def export_pipeline_csv(
     status: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
-    agent_id = UUID(DEV_AGENT_ID)
     csv_data = await commission_service.export_csv(agent_id, db, status=status)
     return StreamingResponse(
         iter([csv_data]),

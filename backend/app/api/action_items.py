@@ -3,14 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_session
+from app.auth import get_current_agent_id
 from app.schemas.action_item import ActionItemCreate, ActionItemUpdate, ActionItemResponse
 from app.schemas.action_item import HealthScoreResponse
 from app.services import action_item_service, health_score_service
 
 router = APIRouter()
-
-# Default agent ID for dev mode
-DEV_AGENT_ID = "00000000-0000-0000-0000-000000000001"
 
 
 @router.get("/transactions/{transaction_id}/action-items", response_model=List[ActionItemResponse])
@@ -29,9 +27,9 @@ async def create_action_item(
     transaction_id: UUID,
     item_create: ActionItemCreate,
     db: AsyncSession = Depends(get_async_session),
+    agent_id: UUID = Depends(get_current_agent_id),
 ):
     """Create a manual action item."""
-    agent_id = UUID(DEV_AGENT_ID)
     return await action_item_service.create_action_item(transaction_id, item_create, db, agent_id=agent_id)
 
 
@@ -43,6 +41,24 @@ async def update_action_item(
 ):
     """Update an action item (complete, snooze, dismiss, or edit)."""
     return await action_item_service.update_action_item(item_id, item_update, db)
+
+
+@router.patch("/action-items/{item_id}/complete", response_model=ActionItemResponse)
+async def complete_action_item(
+    item_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """Mark an action item as completed."""
+    return await action_item_service.complete_action_item(item_id, db)
+
+
+@router.patch("/action-items/{item_id}/dismiss", response_model=ActionItemResponse)
+async def dismiss_action_item(
+    item_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """Mark an action item as dismissed."""
+    return await action_item_service.dismiss_action_item(item_id, db)
 
 
 @router.get("/transactions/{transaction_id}/health", response_model=HealthScoreResponse)

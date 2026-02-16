@@ -92,3 +92,39 @@ async def update_action_item(
     await db.commit()
     await db.refresh(item)
     return ActionItemResponse.model_validate(item)
+
+
+async def complete_action_item(item_id: UUID, db: AsyncSession) -> ActionItemResponse:
+    """Mark an action item as completed."""
+    item = await db.get(ActionItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    if item.status == "completed":
+        raise HTTPException(status_code=400, detail="Action item is already completed")
+
+    item.status = "completed"
+    item.completed_at = datetime.now(timezone.utc)
+
+    if item.milestone_id:
+        milestone = await db.get(Milestone, item.milestone_id)
+        if milestone and milestone.status != "completed":
+            milestone.status = "completed"
+            milestone.completed_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(item)
+    return ActionItemResponse.model_validate(item)
+
+
+async def dismiss_action_item(item_id: UUID, db: AsyncSession) -> ActionItemResponse:
+    """Mark an action item as dismissed."""
+    item = await db.get(ActionItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    if item.status == "dismissed":
+        raise HTTPException(status_code=400, detail="Action item is already dismissed")
+
+    item.status = "dismissed"
+    await db.commit()
+    await db.refresh(item)
+    return ActionItemResponse.model_validate(item)

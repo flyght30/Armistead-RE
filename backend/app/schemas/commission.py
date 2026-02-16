@@ -39,8 +39,8 @@ class CommissionConfigResponse(BaseModel):
     broker_split_percentage: Optional[Decimal] = None
     default_referral_fee_percentage: Optional[Decimal] = None
     team_splits: Optional[dict] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 # --- Commission Split Schemas ---

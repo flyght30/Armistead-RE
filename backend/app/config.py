@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://user:pass@db/ttc"
     redis_url: str = "redis://redis"
-    minio_endpoint: str = "minio"
+    minio_endpoint: str = "minio:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     claude_api_key: str = "your_claude_api_key"
@@ -16,6 +16,10 @@ class Settings(BaseSettings):
 
     # Celery
     celery_broker_url: str = ""  # Falls back to redis_url if empty
+
+    # Auth (Clerk)
+    clerk_secret_key: str = ""
+    clerk_frontend_api: str = ""  # e.g. "clerk.your-app.com" or "your-app.clerk.accounts.dev"
 
     # Portal (Phase 3)
     portal_base_url: str = "http://localhost:3000"
