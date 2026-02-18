@@ -117,7 +117,26 @@ class TransactionCommissionResponse(BaseModel):
 
 # --- Pipeline Schemas ---
 
+class PipelineItem(BaseModel):
+    transaction_id: UUID
+    property_address: Optional[str] = None
+    property_city: Optional[str] = None
+    property_state: Optional[str] = None
+    status: Optional[str] = None
+    purchase_price: Optional[float] = None
+    gross_commission: Optional[float] = None
+    agent_net: Optional[float] = None
+    broker_split: Optional[float] = None
+    commission_status: str
+    rate: Optional[float] = None
+    closing_date: Optional[datetime] = None
+
+
 class PipelineSummary(BaseModel):
+    total_gross: float
+    total_net: float
+    pending_amount: float
+    paid_amount: float
     total_projected_gross: Decimal
     total_projected_net: Decimal
     total_actual_gross: Decimal
@@ -126,6 +145,7 @@ class PipelineSummary(BaseModel):
     avg_commission_rate: Optional[Decimal] = None
     by_status: dict  # {projected: {count, gross, net}, pending: ..., paid: ...}
     by_month: list[dict]  # [{month, gross, net, count}]
+    items: list[PipelineItem] = []
 
 
 class CSVExportRequest(BaseModel):

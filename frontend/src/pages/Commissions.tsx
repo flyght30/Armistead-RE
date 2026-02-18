@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Download,
   ChevronRight,
+  Building2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../lib/api';
@@ -18,12 +19,16 @@ import EmptyState from '../components/ui/EmptyState';
 
 interface PipelineItem {
   transaction_id: string;
-  property_address: string;
+  property_address: string | null;
+  property_city: string | null;
+  property_state: string | null;
   status: string;
-  purchase_price: number;
-  gross_commission: number;
-  agent_net: number;
+  purchase_price: number | null;
+  gross_commission: number | null;
+  agent_net: number | null;
+  broker_split: number | null;
   commission_status: string;
+  rate: number | null;
   closing_date: string | null;
 }
 
@@ -32,6 +37,7 @@ interface PipelineSummary {
   total_net: number;
   pending_amount: number;
   paid_amount: number;
+  transaction_count: number;
   items: PipelineItem[];
 }
 
@@ -57,10 +63,15 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
+function formatPercent(rate: number | null | undefined): string {
+  if (rate == null) return '--';
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
 const statusColors: Record<string, string> = {
+  projected: 'bg-blue-100 text-blue-700',
   pending: 'bg-yellow-100 text-yellow-700',
   paid: 'bg-green-100 text-green-700',
-  processing: 'bg-blue-100 text-blue-700',
 };
 
 export default function Commissions() {
@@ -100,6 +111,9 @@ export default function Commissions() {
     ? items
     : items.filter((i) => i.commission_status === filterStatus);
 
+  // Calculate broker total from items
+  const totalBroker = items.reduce((sum, i) => sum + (i.broker_split ?? 0), 0);
+
   return (
     <div>
       <PageHeader
@@ -126,15 +140,15 @@ export default function Commissions() {
         />
         <StatsCard
           icon={TrendingUp}
-          label="Agent Net"
+          label="Agent Net (80%)"
           value={formatCurrency(pipeline?.total_net)}
           color="green"
         />
         <StatsCard
-          icon={Clock}
-          label="Pending"
-          value={formatCurrency(pipeline?.pending_amount)}
-          color="yellow"
+          icon={Building2}
+          label="Broker (20%)"
+          value={formatCurrency(totalBroker)}
+          color="purple"
         />
         <StatsCard
           icon={CheckCircle}
@@ -148,7 +162,7 @@ export default function Commissions() {
       <Card padding={false}>
         <div className="px-4 pt-4 pb-3 border-b border-gray-100">
           <div className="flex gap-1">
-            {['all', 'pending', 'processing', 'paid'].map((s) => (
+            {['all', 'projected', 'pending', 'paid'].map((s) => (
               <button
                 key={s}
                 onClick={() => setFilterStatus(s)}
@@ -177,9 +191,11 @@ export default function Commissions() {
                 <tr className="border-b border-gray-100">
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Property</th>
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Status</th>
+                  <th className="text-center text-xs font-medium text-gray-500 px-4 py-3">Rate</th>
                   <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Purchase Price</th>
                   <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Gross</th>
-                  <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Net</th>
+                  <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Broker (20%)</th>
+                  <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Agent Net (80%)</th>
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Closing</th>
                   <th className="w-8 px-4 py-3"></th>
                 </tr>
@@ -191,17 +207,24 @@ export default function Commissions() {
                     onClick={() => navigate(`/transaction/${item.transaction_id}`)}
                     className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {item.property_address || 'Untitled'}
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium text-gray-900">
+                        {item.property_address || 'Untitled'}
+                      </p>
+                      {item.property_city && (
+                        <p className="text-xs text-gray-500">{item.property_city}, {item.property_state}</p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[item.commission_status] || 'bg-gray-100 text-gray-600'}`}>
                         {item.commission_status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatPercent(item.rate)}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(item.purchase_price)}</td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">{formatCurrency(item.gross_commission)}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-green-600 text-right">{formatCurrency(item.agent_net)}</td>
+                    <td className="px-4 py-3 text-sm text-indigo-600 text-right">{formatCurrency(item.broker_split)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-green-600 text-right">{formatCurrency(item.agent_net)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{formatDate(item.closing_date)}</td>
                     <td className="px-4 py-3">
                       <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -209,6 +232,23 @@ export default function Commissions() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="bg-gray-50 border-t-2 border-gray-200">
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-900" colSpan={4}>
+                    Totals ({filtered.length} transaction{filtered.length !== 1 ? 's' : ''})
+                  </td>
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
+                    {formatCurrency(filtered.reduce((s, i) => s + (i.gross_commission ?? 0), 0))}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-bold text-indigo-700 text-right">
+                    {formatCurrency(filtered.reduce((s, i) => s + (i.broker_split ?? 0), 0))}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-bold text-green-700 text-right">
+                    {formatCurrency(filtered.reduce((s, i) => s + (i.agent_net ?? 0), 0))}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

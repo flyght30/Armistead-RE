@@ -14,7 +14,7 @@ from app.models.transaction import Transaction
 from app.schemas.commission import (
     CommissionConfigCreate, CommissionConfigUpdate, CommissionConfigResponse,
     TransactionCommissionCreate, TransactionCommissionUpdate, TransactionCommissionResponse,
-    PipelineSummary,
+    PipelineSummary, PipelineItem,
 )
 
 logger = logging.getLogger(__name__)
@@ -168,21 +168,27 @@ async def update_transaction_commission(
 async def get_pipeline_summary(
     agent_id: UUID, db: AsyncSession
 ) -> PipelineSummary:
+    # Join commissions with transactions to get property info
     stmt = (
-        select(TransactionCommission)
+        select(TransactionCommission, Transaction)
+        .join(Transaction, TransactionCommission.transaction_id == Transaction.id)
+        .options(selectinload(TransactionCommission.splits))
         .where(TransactionCommission.agent_id == agent_id)
     )
     result = await db.execute(stmt)
-    commissions = result.scalars().all()
+    rows = result.all()
 
     total_projected_gross = Decimal("0")
     total_projected_net = Decimal("0")
     total_actual_gross = Decimal("0")
     total_actual_net = Decimal("0")
+    pending_amount = Decimal("0")
+    paid_amount = Decimal("0")
     by_status = {}
     rates = []
+    items = []
 
-    for c in commissions:
+    for c, txn in rows:
         if c.gross_commission:
             total_projected_gross += c.gross_commission
         if c.projected_net:
@@ -194,12 +200,45 @@ async def get_pipeline_summary(
         if c.rate:
             rates.append(c.rate)
 
+        # Track pending/paid amounts
+        if c.status == "pending":
+            pending_amount += c.gross_commission or Decimal("0")
+        elif c.status == "paid":
+            paid_amount += c.actual_gross or c.gross_commission or Decimal("0")
+
         status = c.status
         if status not in by_status:
             by_status[status] = {"count": 0, "gross": Decimal("0"), "net": Decimal("0")}
         by_status[status]["count"] += 1
         by_status[status]["gross"] += c.gross_commission or Decimal("0")
         by_status[status]["net"] += c.projected_net or Decimal("0")
+
+        # Extract purchase price from JSON
+        purchase_price = None
+        if txn.purchase_price and isinstance(txn.purchase_price, dict):
+            purchase_price = txn.purchase_price.get("amount")
+
+        # Calculate broker split from splits
+        broker_split = None
+        for split in c.splits:
+            if split.split_type == "broker" and split.calculated_amount:
+                broker_split = float(split.calculated_amount)
+                break
+
+        items.append(PipelineItem(
+            transaction_id=txn.id,
+            property_address=txn.property_address,
+            property_city=txn.property_city,
+            property_state=txn.property_state,
+            status=txn.status,
+            purchase_price=float(purchase_price) if purchase_price else None,
+            gross_commission=float(c.gross_commission) if c.gross_commission else None,
+            agent_net=float(c.projected_net) if c.projected_net else None,
+            broker_split=broker_split,
+            commission_status=c.status,
+            rate=float(c.rate) if c.rate else None,
+            closing_date=txn.closing_date,
+        ))
 
     # Convert Decimals to float for JSON serialization in by_status
     for s in by_status:
@@ -209,14 +248,19 @@ async def get_pipeline_summary(
     avg_rate = sum(rates) / len(rates) if rates else None
 
     return PipelineSummary(
+        total_gross=float(total_projected_gross),
+        total_net=float(total_projected_net),
+        pending_amount=float(pending_amount),
+        paid_amount=float(paid_amount),
         total_projected_gross=total_projected_gross,
         total_projected_net=total_projected_net,
         total_actual_gross=total_actual_gross,
         total_actual_net=total_actual_net,
-        transaction_count=len(commissions),
+        transaction_count=len(rows),
         avg_commission_rate=avg_rate,
         by_status=by_status,
-        by_month=[],  # TODO: implement monthly breakdown
+        by_month=[],
+        items=items,
     )
 
 
