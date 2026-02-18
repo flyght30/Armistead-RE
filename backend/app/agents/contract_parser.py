@@ -15,24 +15,81 @@ settings = Settings()
 
 client = anthropic.AsyncAnthropic(api_key=settings.claude_api_key)
 
-SYSTEM_PROMPT = """You are an AI assistant designed to parse real estate contracts.
-Extract all relevant information from the provided document text, including:
-- Property details (address, city, state, zip)
-- Financial terms (purchase price, down payment, financing type)
-- All parties involved (names, roles, contact info)
-- Important dates (closing date, inspection deadlines, etc.)
+SYSTEM_PROMPT = """You are an expert real estate transaction coordinator AI that parses purchase contracts.
+You specialize in residential real estate contracts from the Southeastern US (Alabama, Georgia, etc.),
+including LCAR, GAR, and standard REALTOR association forms.
 
-Return a structured JSON object matching this schema:
+Extract ALL information from the provided contract. Be thorough — agents depend on this data.
+
+Return a JSON object with this exact structure:
+
 {
-  "property_details": {"address": "", "city": "", "state": "", "zip_code": ""},
-  "financial_terms": {"purchase_price": 0, "down_payment": null, "financing_type": ""},
-  "parties": [{"name": "", "role": "", "contact_info": {"email": "", "phone": ""}}],
-  "dates": {"closing_date": "", "inspection_deadline": ""},
-  "confidence_scores": {"property_details": 0.0, "financial_terms": 0.0, "parties": 0.0, "dates": 0.0},
-  "detected_features": ["feature1", "feature2"]
+  "property_details": {
+    "address": "street address only",
+    "city": "city name",
+    "state": "two-letter state code (AL, GA, etc.)",
+    "zip_code": "5-digit zip",
+    "county": "county name or null"
+  },
+  "financial_terms": {
+    "purchase_price": 305000.00,
+    "original_list_price": 309900.00,
+    "down_payment": null,
+    "financing_type": "fha",
+    "earnest_money": 1000.00,
+    "earnest_money_holder": "Graham Legal Firm",
+    "seller_concessions": 7000.00,
+    "home_warranty_amount": 799.00,
+    "home_warranty_paid_by": "seller"
+  },
+  "parties": [
+    {"name": "Full Name", "role": "buyer", "email": null, "phone": null, "company": null, "license_number": null},
+    {"name": "Agent Name", "role": "buyer_agent", "email": null, "phone": null, "company": "Brokerage Name", "license_number": "12345"}
+  ],
+  "dates": {
+    "contract_date": "2025-07-08",
+    "closing_date": "2025-08-15",
+    "inspection_deadline": "2025-07-23",
+    "financing_deadline": "2025-07-11",
+    "earnest_money_deadline": "2025-07-11",
+    "appraisal_contingency_date": null,
+    "offer_deadline": "2025-07-10"
+  },
+  "additional_provisions": {
+    "provisions": ["Seller to pay 3% buyer's agent commission", "Seller to pay up to $7,000 in closing costs"],
+    "contingencies": ["inspection", "financing", "appraisal"],
+    "home_warranty": true,
+    "wood_infestation_report": true,
+    "lead_based_paint": false,
+    "fha_va_agreement": true,
+    "property_sale_contingency": false
+  },
+  "representation_side": "buyer",
+  "contract_type": "LCAR Residential Real Estate Sales Contract",
+  "confidence_scores": {
+    "property_details": 0.95,
+    "financial_terms": 0.90,
+    "parties": 0.85,
+    "dates": 0.92
+  },
+  "detected_features": ["fha_financing", "home_warranty", "seller_concessions", "wood_infestation"]
 }
 
-Return ONLY valid JSON, no markdown or explanations."""
+RULES:
+- All dates must be ISO format (YYYY-MM-DD). Convert "7/8/2025" to "2025-07-08".
+- financing_type must be one of: "conventional", "fha", "va", "cash", "usda", or null.
+- Party roles must be one of: "buyer", "seller", "buyer_agent", "seller_agent", "lender", "closing_attorney", "title_company", "inspector".
+- Include ALL buyers and sellers as separate party entries (e.g. if husband and wife are both buyers, list each).
+- Include listing agent (role="seller_agent") and selling/buyer's agent (role="buyer_agent") with brokerage as company.
+- For the closing agent/attorney/title company, use role="closing_attorney" or "title_company" as appropriate.
+- representation_side: determine from the agency section — if the selling company represents the buyer, it's "buyer".
+- seller_concessions: look for "closing costs and prepaids" caps, seller credits, etc.
+- For detected_features, include tags like: fha_financing, va_financing, conventional_financing, cash_purchase, home_warranty, seller_concessions, wood_infestation, lead_paint, appraisal_contingency, inspection_contingency, financing_contingency, property_sale_contingency, counter_offer.
+- If the purchase price differs from a counter/original price, set original_list_price to the counter/original.
+- Set confidence_scores from 0.0 to 1.0 based on how clearly each section's data was found.
+- If a field is not found in the document, use null (not empty string).
+
+Return ONLY valid JSON. No markdown, no explanations, no code fences."""
 
 MAX_RETRIES = 3
 BASE_DELAY = 1.0  # seconds
@@ -48,7 +105,7 @@ async def _call_claude_with_retry(
         try:
             response = await client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=4096,
+                max_tokens=8192,
                 system=system,
                 messages=messages,
             )
@@ -165,18 +222,42 @@ async def parse_contract(file_path: str) -> dict:
             cleaned = cleaned.rsplit("```", 1)[0]
 
         parsed_json = json.loads(cleaned)
+
+        # Handle legacy "dates" dict format — convert to ContractDates if needed
+        if "dates" in parsed_json and isinstance(parsed_json["dates"], dict):
+            dates_data = parsed_json["dates"]
+            # Already matches ContractDates fields — Pydantic will handle it
+            # But ensure old flat dict with arbitrary keys still works
+            if not any(k in dates_data for k in ("contract_date", "closing_date", "inspection_deadline")):
+                # Legacy format — try to map common keys
+                mapped = {}
+                for k, v in dates_data.items():
+                    key_lower = k.lower().replace(" ", "_")
+                    if "closing" in key_lower:
+                        mapped["closing_date"] = v
+                    elif "inspection" in key_lower:
+                        mapped["inspection_deadline"] = v
+                    elif "contract" in key_lower or "execution" in key_lower:
+                        mapped["contract_date"] = v
+                    elif "financing" in key_lower:
+                        mapped["financing_deadline"] = v
+                    elif "earnest" in key_lower:
+                        mapped["earnest_money_deadline"] = v
+                parsed_json["dates"] = mapped
+
         # Validate against schema
         validated = ContractExtractionSchema.model_validate(parsed_json)
         return validated.model_dump()
     except (json.JSONDecodeError, Exception) as e:
         logger.error("Failed to parse AI response as JSON: %s", str(e))
-        logger.debug("Raw response: %s", raw_response[:500])
+        logger.debug("Raw response: %s", raw_response[:500] if raw_response else "None")
         # Return a minimal valid structure on parse failure
         return {
-            "property_details": {"address": "", "city": "", "state": "", "zip_code": ""},
-            "financial_terms": {"purchase_price": 0, "down_payment": None, "financing_type": ""},
+            "property_details": {"address": "", "city": "", "state": "", "zip_code": "", "county": None},
+            "financial_terms": {"purchase_price": 0, "down_payment": None, "financing_type": None},
             "parties": [],
             "dates": {},
+            "additional_provisions": {"provisions": [], "contingencies": [], "home_warranty": False, "wood_infestation_report": False, "lead_based_paint": False, "fha_va_agreement": False, "property_sale_contingency": False},
             "confidence_scores": {},
             "detected_features": ["parse_error"],
         }

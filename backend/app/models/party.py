@@ -10,7 +10,7 @@ class Party(BaseModel):
     transaction_id = Column(UUID(as_uuid=True), ForeignKey("transactions.id"), nullable=False)
     role = Column(String, nullable=False)
     name = Column(String, nullable=False)
-    email = Column(String, nullable=False)
+    email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     company = Column(String, nullable=True)
     is_primary = Column(Boolean, default=False)

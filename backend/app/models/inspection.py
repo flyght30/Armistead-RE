@@ -30,8 +30,9 @@ class InspectionItem(BaseModel):
     estimated_cost_high = Column(JSON, nullable=False)
     risk_assessment = Column(String, nullable=False)
     recommendation = Column(String, nullable=False)
-    repair_status = Column(String, nullable=False)
+    repair_status = Column(String, nullable=False, default="pending")
     sort_order = Column(Integer, nullable=False)
+    report_reference = Column(String, nullable=True)  # e.g., "Page 6, Item 3"
 
     # Relationships
     analysis = relationship("InspectionAnalysis", back_populates="items")

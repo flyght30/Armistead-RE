@@ -16,6 +16,7 @@ import { Transaction, DashboardStats } from '../types/transaction';
 import PageHeader from '../components/ui/PageHeader';
 import StatsCard from '../components/ui/StatsCard';
 import StatusBadge from '../components/ui/StatusBadge';
+import HealthBadge from '../components/ui/HealthBadge';
 import DataTable, { Column } from '../components/ui/DataTable';
 import Card from '../components/ui/Card';
 import { FullPageSpinner } from '../components/ui/Spinner';
@@ -63,6 +64,39 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
+function daysUntilClose(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  try {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const close = new Date(dateStr);
+    close.setHours(0, 0, 0, 0);
+    return Math.ceil((close.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  } catch {
+    return null;
+  }
+}
+
+function DaysToCloseCell({ dateStr }: { dateStr: string | null | undefined }) {
+  const days = daysUntilClose(dateStr);
+  if (days == null) return <span className="text-gray-400">--</span>;
+
+  let colorClass: string;
+  if (days < 0) colorClass = 'text-red-600 font-semibold';
+  else if (days <= 7) colorClass = 'text-red-600 font-semibold';
+  else if (days <= 14) colorClass = 'text-orange-600 font-medium';
+  else if (days <= 30) colorClass = 'text-yellow-600';
+  else colorClass = 'text-gray-600';
+
+  const label = days < 0
+    ? `${Math.abs(days)}d past`
+    : days === 0
+    ? 'Today'
+    : `${days}d`;
+
+  return <span className={colorClass}>{label}</span>;
+}
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('all');
@@ -85,7 +119,8 @@ const Dashboard: React.FC = () => {
       const matchesSearch =
         !searchQuery ||
         (t.property_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (t.property_city || '').toLowerCase().includes(searchQuery.toLowerCase());
+        (t.property_city || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.representation_side || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
   }, [transactions, activeFilter, searchQuery]);
@@ -113,6 +148,13 @@ const Dashboard: React.FC = () => {
       render: (row) => <StatusBadge status={row.status} />,
     },
     {
+      key: 'health_score',
+      header: 'Health',
+      render: (row) => (
+        row.health_score != null ? <HealthBadge score={row.health_score} size="sm" /> : <span className="text-gray-400">--</span>
+      ),
+    },
+    {
       key: 'representation_side',
       header: 'Side',
       sortable: true,
@@ -129,13 +171,11 @@ const Dashboard: React.FC = () => {
       key: 'closing_date',
       header: 'Closing',
       sortable: true,
-      render: (row) => <span className="text-gray-600">{formatDate(row.closing_date)}</span>,
-    },
-    {
-      key: 'parties',
-      header: 'Parties',
       render: (row) => (
-        <span className="text-gray-500">{row.parties.length}</span>
+        <div className="flex flex-col">
+          <span className="text-gray-600">{formatDate(row.closing_date)}</span>
+          <DaysToCloseCell dateStr={row.closing_date} />
+        </div>
       ),
     },
     {
@@ -216,7 +256,7 @@ const Dashboard: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by address..."
+                placeholder="Search address, city, side..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none w-full sm:w-64"

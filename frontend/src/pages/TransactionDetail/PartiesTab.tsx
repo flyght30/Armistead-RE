@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Users, Mail, Phone, Building2, Star, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Party } from '../../types/party';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -45,6 +45,31 @@ const ROLE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
+const ROLE_GROUP_ORDER: Record<string, number> = {
+  'Buyers': 0,
+  'Sellers': 1,
+  'Agents': 2,
+  'Lenders & Title': 3,
+  'Other': 4,
+};
+
+function getRoleGroup(role: string): string {
+  switch (role) {
+    case 'buyer': return 'Buyers';
+    case 'seller': return 'Sellers';
+    case 'buyer_agent':
+    case 'seller_agent': return 'Agents';
+    case 'lender':
+    case 'title_company':
+    case 'attorney': return 'Lenders & Title';
+    default: return 'Other';
+  }
+}
+
+function formatRole(role: string): string {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function PartyCard({
   party,
   onEdit,
@@ -83,15 +108,17 @@ function PartyCard({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <a
-            href={`mailto:${party.email}`}
-            className="hover:text-indigo-600 transition-colors truncate"
-          >
-            {party.email}
-          </a>
-        </div>
+        {party.email && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <a
+              href={`mailto:${party.email}`}
+              className="hover:text-indigo-600 transition-colors truncate"
+            >
+              {party.email}
+            </a>
+          </div>
+        )}
 
         {party.phone && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -120,6 +147,19 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
   const [form, setForm] = useState<PartyFormData>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
+  // Group parties by role category
+  const groupedParties = useMemo(() => {
+    const groups: Record<string, Party[]> = {};
+    for (const party of parties) {
+      const group = getRoleGroup(party.role);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(party);
+    }
+    return Object.entries(groups).sort(
+      ([a], [b]) => (ROLE_GROUP_ORDER[a] ?? 99) - (ROLE_GROUP_ORDER[b] ?? 99)
+    );
+  }, [parties]);
+
   function openAddModal() {
     setEditingParty(null);
     setForm(EMPTY_FORM);
@@ -131,7 +171,7 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
     setForm({
       name: party.name,
       role: party.role,
-      email: party.email,
+      email: party.email ?? '',
       phone: party.phone ?? '',
       company: party.company ?? '',
       is_primary: party.is_primary,
@@ -156,7 +196,7 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
     const payload: Record<string, unknown> = {
       name: form.name,
       role: form.role,
-      email: form.email,
+      email: form.email || null,
       is_primary: form.is_primary,
     };
     if (form.phone.trim()) payload.phone = form.phone.trim();
@@ -198,7 +238,7 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
     }
   }
 
-  const isFormValid = form.name.trim() !== '' && form.role !== '' && form.email.trim() !== '';
+  const isFormValid = form.name.trim() !== '' && form.role !== '';
 
   return (
     <>
@@ -216,7 +256,7 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
         </button>
       </div>
 
-      {/* Grid or empty state */}
+      {/* Grouped parties or empty state */}
       {parties.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -225,14 +265,23 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
           action={{ label: 'Add Party', onClick: openAddModal }}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {parties.map((party) => (
-            <PartyCard
-              key={party.id}
-              party={party}
-              onEdit={openEditModal}
-              onDelete={handleDelete}
-            />
+        <div className="space-y-6">
+          {groupedParties.map(([group, groupParties]) => (
+            <div key={group}>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                {group} ({groupParties.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {groupParties.map((party) => (
+                  <PartyCard
+                    key={party.id}
+                    party={party}
+                    onEdit={openEditModal}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -267,7 +316,6 @@ export default function PartiesTab({ parties, transactionId, onRefresh }: Partie
             label="Email"
             type="email"
             placeholder="john@example.com"
-            required
             value={form.email}
             onChange={(e) => updateField('email', e.target.value)}
           />

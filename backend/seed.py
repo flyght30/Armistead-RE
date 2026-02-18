@@ -20,6 +20,8 @@ from app.models.inspection import InspectionAnalysis, InspectionItem
 from app.models.communication import Communication
 from app.models.milestone_template import MilestoneTemplate, MilestoneTemplateItem
 from app.models.action_item import ActionItem
+from app.models.commission import CommissionConfig, TransactionCommission, CommissionSplit
+from decimal import Decimal
 
 # Fixed UUIDs for dev mode
 DEV_AGENT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -180,6 +182,66 @@ def _al_conventional_buyer_items(template_id):
     ]
 
 
+def _al_fha_buyer_items(template_id):
+    """Alabama FHA Buyer — 18 milestones (includes FHA-specific requirements)."""
+    items = [
+        ("inspection", "Schedule Home Inspection", 1, "contract_date", "buyer_agent", 1, 1),
+        ("inspection", "Home Inspection Completed", 7, "contract_date", "inspector", 2, 2),
+        ("inspection", "Wood Destroying Organism Inspection", 7, "contract_date", "buyer_agent", 2, 3),
+        ("inspection", "Request Repairs", 10, "contract_date", "buyer_agent", 2, 4),
+        ("inspection", "Seller Responds to Repairs", 14, "contract_date", "seller_agent", 2, 5),
+        ("appraisal", "FHA Appraisal Ordered", 3, "contract_date", "lender", 2, 6),
+        ("appraisal", "FHA Appraisal Completed (includes MPR check)", 14, "contract_date", "lender", 3, 7),
+        ("appraisal", "FHA Minimum Property Requirements Met", 18, "contract_date", "lender", 3, 8),
+        ("financing", "Loan Application with FHA Case Number", 3, "contract_date", "buyer", 2, 9),
+        ("financing", "Credit Check & FHA Eligibility Verified", 7, "contract_date", "lender", 2, 10),
+        ("financing", "FHA Loan Commitment / Clear to Close", -10, "closing_date", "lender", 5, 11),
+        ("title", "Title Search & Examination Ordered", 5, "contract_date", "title_company", 2, 12),
+        ("title", "Title Insurance Commitment Received", 21, "contract_date", "title_company", 3, 13),
+        ("title", "Survey Completed", 21, "contract_date", "buyer_agent", 3, 14),
+        ("other", "Homeowners Insurance Bound (must meet FHA standards)", -7, "closing_date", "buyer", 3, 15),
+        ("other", "Verify FHA Required Repairs Complete", -5, "closing_date", "buyer_agent", 2, 16),
+        ("closing", "Final Walk-Through", -2, "closing_date", "buyer_agent", 1, 17),
+        ("closing", "Closing Disclosure Received", -3, "closing_date", "lender", 2, 18),
+        ("closing", "Closing Day", 0, "closing_date", "title_company", 3, 19),
+    ]
+    return [
+        MilestoneTemplateItem(
+            template_id=template_id,
+            type=t, title=title, day_offset=offset,
+            offset_reference=ref, responsible_party_role=role,
+            reminder_days_before=reminder, sort_order=order,
+        )
+        for t, title, offset, ref, role, reminder, order in items
+    ]
+
+
+def _al_cash_buyer_items(template_id):
+    """Alabama Cash Buyer — 11 milestones (no financing or appraisal)."""
+    items = [
+        ("inspection", "Schedule Home Inspection", 1, "contract_date", "buyer_agent", 1, 1),
+        ("inspection", "Home Inspection Completed", 7, "contract_date", "inspector", 2, 2),
+        ("inspection", "Wood Destroying Organism Inspection", 7, "contract_date", "buyer_agent", 2, 3),
+        ("inspection", "Request Repairs", 10, "contract_date", "buyer_agent", 2, 4),
+        ("inspection", "Seller Responds to Repairs", 14, "contract_date", "seller_agent", 2, 5),
+        ("title", "Title Search & Examination Ordered", 5, "contract_date", "title_company", 2, 6),
+        ("title", "Title Insurance Commitment Received", 14, "contract_date", "title_company", 3, 7),
+        ("other", "Proof of Funds Provided", 5, "contract_date", "buyer", 2, 8),
+        ("other", "Homeowners Insurance Bound", -5, "closing_date", "buyer", 2, 9),
+        ("closing", "Final Walk-Through", -1, "closing_date", "buyer_agent", 1, 10),
+        ("closing", "Closing Day", 0, "closing_date", "title_company", 3, 11),
+    ]
+    return [
+        MilestoneTemplateItem(
+            template_id=template_id,
+            type=t, title=title, day_offset=offset,
+            offset_reference=ref, responsible_party_role=role,
+            reminder_days_before=reminder, sort_order=order,
+        )
+        for t, title, offset, ref, role, reminder, order in items
+    ]
+
+
 def _al_conventional_seller_items(template_id):
     """Alabama Conventional Seller — 12 milestones."""
     items = [
@@ -238,6 +300,16 @@ async def seed():
             state="GA",
         )
         db.add(agent)
+
+        # === COMMISSION CONFIG — 3% rate, 20/80 broker/agent split ===
+        commission_config = CommissionConfig(
+            agent_id=DEV_AGENT_ID,
+            commission_type="percentage",
+            default_rate=Decimal("0.0300"),       # 3% commission rate
+            broker_split_percentage=Decimal("0.2000"),  # 20% to broker
+            default_referral_fee_percentage=None,
+        )
+        db.add(commission_config)
 
         # === MILESTONE TEMPLATES ===
         templates_created = []
@@ -329,6 +401,45 @@ async def seed():
         db.add(tpl7)
         db.add_all(_al_conventional_seller_items(tpl7_id))
         templates_created.append("AL Conventional Seller (12 items)")
+
+        # Template 8: AL FHA Buyer
+        tpl8_id = uuid.uuid4()
+        tpl8 = MilestoneTemplate(
+            id=tpl8_id, name="AL FHA Buyer",
+            state_code="AL", financing_type="fha", representation_side="buyer",
+            description="Alabama FHA financing buyer-side checklist. 19 milestones including FHA-specific requirements (MPR, case number).",
+            is_default=True, is_active=True,
+        )
+        db.add(tpl8)
+        db.add_all(_al_fha_buyer_items(tpl8_id))
+        templates_created.append("AL FHA Buyer (19 items)")
+
+        # Template 9: AL VA Buyer (reuses AL FHA structure with VA-specific naming)
+        tpl9_id = uuid.uuid4()
+        tpl9 = MilestoneTemplate(
+            id=tpl9_id, name="AL VA Buyer",
+            state_code="AL", financing_type="va", representation_side="buyer",
+            description="Alabama VA financing buyer-side checklist. 19 milestones including VA-specific requirements (COE, MPRs).",
+            is_default=True, is_active=True,
+        )
+        db.add(tpl9)
+        va_al_items = _al_fha_buyer_items(tpl9_id)
+        for item in va_al_items:
+            item.title = item.title.replace("FHA", "VA")
+        db.add_all(va_al_items)
+        templates_created.append("AL VA Buyer (19 items)")
+
+        # Template 10: AL Cash Buyer
+        tpl10_id = uuid.uuid4()
+        tpl10 = MilestoneTemplate(
+            id=tpl10_id, name="AL Cash Buyer",
+            state_code="AL", financing_type="cash", representation_side="buyer",
+            description="Alabama cash purchase buyer-side checklist. 11 milestones — no financing or appraisal.",
+            is_default=True, is_active=True,
+        )
+        db.add(tpl10)
+        db.add_all(_al_cash_buyer_items(tpl10_id))
+        templates_created.append("AL Cash Buyer (11 items)")
 
         # === TRANSACTION 1: Confirmed, full data, some overdue milestones ===
         t1_id = uuid.uuid4()
@@ -542,6 +653,53 @@ async def seed():
         ]
         db.add_all(milestones_t5)
 
+        # === COMMISSIONS — auto-create with 3% rate, 20/80 broker/agent split ===
+        def _make_commission(txn_id, purchase_amount, status="projected"):
+            rate = Decimal("0.0300")  # 3%
+            gross = Decimal(str(purchase_amount)) * rate
+            broker_pct = Decimal("0.2000")  # 20% to broker
+            broker_amount = gross * broker_pct
+            agent_net = gross - broker_amount
+
+            comm = TransactionCommission(
+                transaction_id=txn_id,
+                agent_id=DEV_AGENT_ID,
+                commission_type="percentage",
+                rate=rate,
+                gross_commission=gross,
+                projected_net=agent_net,
+                status=status,
+            )
+            db.add(comm)
+
+            split = CommissionSplit(
+                transaction_commission_id=None,  # will set after flush
+                split_type="broker",
+                recipient_name="Armistead Realty Group",
+                is_percentage=True,
+                percentage=broker_pct,
+                calculated_amount=broker_amount,
+            )
+            return comm, split
+
+        # T1: $485k confirmed → projected
+        comm1, split1 = _make_commission(t1_id, 485000, "projected")
+        # T2: $375k confirmed → projected
+        comm2, split2 = _make_commission(t2_id, 375000, "projected")
+        # T3: $625k closing in 7 days → pending
+        comm3, split3 = _make_commission(t3_id, 625000, "pending")
+        # T5: $299k AL → projected
+        comm5, split5 = _make_commission(t5_id, 299000, "projected")
+
+        await db.flush()  # Get commission IDs
+
+        # Now link splits to commission IDs
+        split1.transaction_commission_id = comm1.id
+        split2.transaction_commission_id = comm2.id
+        split3.transaction_commission_id = comm3.id
+        split5.transaction_commission_id = comm5.id
+        db.add_all([split1, split2, split3, split5])
+
         await db.commit()
 
         total_parties = len(parties_t1) + len(parties_t2) + len(parties_t3) + 1 + len(parties_t5)
@@ -551,7 +709,7 @@ async def seed():
         print("  Armistead RE — Database Seeded Successfully!")
         print("=" * 60)
         print(f"  1 User (agent): Sarah Johnson")
-        print(f"  7 Milestone Templates:")
+        print(f"  10 Milestone Templates:")
         for t in templates_created:
             print(f"    - {t}")
         print(f"  5 Transactions:")
@@ -564,6 +722,8 @@ async def seed():
         print(f"  {len(files_t1)} Files")
         print(f"  1 Inspection Analysis with {len(insp_items)} items")
         print(f"  {len(comms_t1)} Communications")
+        print(f"  1 Commission Config (3% rate, 20/80 broker/agent)")
+        print(f"  4 Transaction Commissions (with broker splits)")
         print("=" * 60)
 
     await engine.dispose()

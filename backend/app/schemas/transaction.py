@@ -19,6 +19,7 @@ class TransactionBase(BaseModel):
     property_city: Optional[str] = None
     property_state: Optional[str] = None
     property_zip: Optional[str] = None
+    property_county: Optional[str] = None
     purchase_price: Optional[Dict[str, Any]] = None
     earnest_money_amount: Optional[Dict[str, Any]] = None
     closing_date: Optional[datetime] = None
@@ -39,6 +40,7 @@ class TransactionUpdate(BaseModel):
     property_city: Optional[str] = None
     property_state: Optional[str] = None
     property_zip: Optional[str] = None
+    property_county: Optional[str] = None
     purchase_price: Optional[Dict[str, Any]] = None
     earnest_money_amount: Optional[Dict[str, Any]] = None
     closing_date: Optional[datetime] = None

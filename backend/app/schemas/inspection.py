@@ -18,6 +18,7 @@ class InspectionItemResponse(BaseModel):
     recommendation: str
     repair_status: str  # pending, in_progress, completed
     sort_order: int
+    report_reference: Optional[str] = None  # e.g., "Page 6, Item 3"
     created_at: datetime
     updated_at: datetime
 

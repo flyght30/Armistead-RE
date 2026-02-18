@@ -55,6 +55,7 @@ export const InspectionItemSchema = z.object({
   recommendation: z.string(),
   repair_status: z.string(),
   sort_order: z.number(),
+  report_reference: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -101,6 +102,7 @@ export const TransactionSchema = z.object({
   property_city: z.string().nullable().optional(),
   property_state: z.string().nullable().optional(),
   property_zip: z.string().nullable().optional(),
+  property_county: z.string().nullable().optional(),
   purchase_price: z.record(z.any()).nullable().optional(),
   earnest_money_amount: z.record(z.any()).nullable().optional(),
   closing_date: z.string().nullable().optional(),
@@ -195,4 +197,47 @@ export interface MilestoneTemplate {
   item_count?: number | null;
   created_at: string;
   updated_at: string;
+}
+
+// Power Features: Risk Alerts
+export interface RiskAlertType {
+  id: string;
+  transaction_id: string;
+  agent_id: string;
+  alert_type: string;
+  severity: string; // low, medium, high, critical
+  message: string;
+  suggested_action?: string | null;
+  is_acknowledged: boolean;
+  acknowledged_at?: string | null;
+  dismissed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Power Features: Smart Suggestions
+export interface SmartSuggestion {
+  icon: string; // phone, upload, alert, calendar, mail, check
+  title: string;
+  description: string;
+  priority: string; // high, medium, low
+}
+
+// Power Features: Closing Readiness Category
+export interface ClosingReadinessCategory {
+  score: number;
+  weight: number;
+  label: string;
+  completed?: number;
+  total?: number;
+}
+
+// Power Features: Enhanced Closing Readiness
+export interface ClosingReadinessData {
+  transaction_id: string;
+  overall_score: number;
+  status: string; // ready, at_risk, not_ready
+  categories: Record<string, ClosingReadinessCategory>;
+  blockers: Array<{ type: string; description: string; severity: string; category?: string }>;
+  recommendations: string[];
 }

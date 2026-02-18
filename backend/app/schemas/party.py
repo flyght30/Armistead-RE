@@ -7,7 +7,7 @@ from datetime import datetime
 class PartyBase(BaseModel):
     name: str
     role: str
-    email: str
+    email: Optional[str] = None
     phone: Optional[str] = None
     company: Optional[str] = None
     is_primary: bool = False

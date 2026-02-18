@@ -15,6 +15,7 @@ class Transaction(BaseModel):
     property_city = Column(String, nullable=True)
     property_state = Column(String, nullable=True)
     property_zip = Column(String, nullable=True)
+    property_county = Column(String, nullable=True)
     purchase_price = Column(JSON, nullable=True)
     earnest_money_amount = Column(JSON, nullable=True)
     closing_date = Column(TIMESTAMP(timezone=True), nullable=True)
